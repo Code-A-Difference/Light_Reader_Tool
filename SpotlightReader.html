@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Assistive Reading Suite Pro (v4.1)</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/opendyslexic@1.0.3/css/opendyslexic.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #1a1a24;
+            --bg-secondary: #242435;
+            --text-main: #f1f2f6;
+            --text-muted: #a4b0be;
+            --accent: #00d2d3;
+            --accent-hover: #1dd1a1;
+            --border: #353b48;
+            --spotlight-color: rgba(18, 18, 24, 0.7);
+            --transition-speed: 0.3s;
+        }
+
+        body.light-theme {
+            --bg-primary: #f5f6fa;
+            --bg-secondary: #ffffff;
+            --text-main: #2f3542;
+            --text-muted: #747d8c;
+            --accent: #0984e3;
+            --accent-hover: #00cec9;
+            --border: #ced6e0;
+            --spotlight-color: rgba(255, 255, 255, 0.75);
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* App Layout Grid */
+        .workspace {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Control Center */
+        .sidebar {
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            z-index: 1001;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .sidebar h2 {
+            font-size: 1.25rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+            animation: slide-in 0.5s ease;
+        }
+
+        @keyframes slide-in {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .control-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            animation: fade-in 0.6s ease;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .control-section h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        /* Inputs & Buttons Customization */
+        .btn {
+            background-color: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border);
+            box-shadow: none;
+            transform: translateY(-1px);
+        }
+
+        /* Toggled Active Buttons (e.g., Highlight Word Active state) */
+        .btn-active {
+            background-color: #f1c40f !important;
+            color: #121212 !important;
+            border-color: #f1c40f !important;
+        }
+
+        /* Layout Grid for Playback buttons */
+        .playback-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .select-input, .range-input {
+            width: 100%;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .select-input:focus, .range-input:focus {
+            border-color: var(--accent);
+        }
+
+        /* Dropzone Styling */
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            animation: pulse-border 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: var(--border); }
+            50% { border-color: var(--accent); }
+            100% { border-color: var(--border); }
+        }
+
+        .dropzone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Main Reading Area */
+        .reading-area {
+            position: relative;
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        /* Fixed Viewport Spotlight Mask */
+        .spotlight-mask {
+            position: fixed;
+            top: 0;
+            left: 350px; 
+            right: 0;
+            bottom: 0;
+            pointer-events: none; 
+            z-index: 999;
+            background-color: var(--spotlight-color);
+            display: none; 
+            
+            --mask-y: 200px;
+            --mask-height: 80px;
+
+            mask-image: linear-gradient(
+                to bottom,
+                black 0%,
+                black calc(var(--mask-y) - (var(--mask-height) / 2)),
+                transparent calc(var(--mask-y) - (var(--mask-height) / 2)),
+                transparent calc(var(--mask-y) + (var(--mask-height) / 2)),
+                black calc(var(--mask-y) + (var(--mask-height) / 2)),
+                black 100%
+            );
+            -webkit-mask-image: linear-gradient(
+                to bottom,
+                black 0%,
+                black calc(var(--mask-y) - (var(--mask-height) / 2)),
+                transparent calc(var(--mask-y) - (var(--mask-height) / 2)),
+                transparent calc(var(--mask-y) + (var(--mask-height) / 2)),
+                black calc(var(--mask-y) + (var(--mask-height) / 2)),
+                black 100%
+            );
+        }
+
+        /* Main Reader Content Text styling */
+        .readable-content {
+            max-width: 800px;
+            margin: 40px auto;
+            font-size: 1.3rem;
+            line-height: 2;
+            word-spacing: 2px;
+            outline: none;
+            position: relative;
+            z-index: 100;
+        }
+
+        .readable-content p {
+            margin-bottom: 1.8rem;
+            border-left: 3px solid transparent;
+            padding-left: 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: border-color 0.2s ease, background-color 0.2s ease, padding-left 0.2s ease;
+        }
+
+        .readable-content p:hover {
+            background-color: rgba(0, 210, 211, 0.04);
+            border-left-color: var(--border);
+        }
+
+        /* Highlight visual for selected paragraph voice target */
+        .readable-content p.reading-target-active {
+            border-left-color: var(--accent);
+            background-color: rgba(0, 210, 211, 0.08);
+            padding-left: 20px;
+            animation: subtlePulse 2s infinite ease-in-out;
+        }
+
+        @keyframes subtlePulse {
+            0% { background-color: rgba(0, 210, 211, 0.06); }
+            50% { background-color: rgba(0, 210, 211, 0.12); }
+            100% { background-color: rgba(0, 210, 211, 0.06); }
+        }
+
+        /* Inline Word Highlighter Class */
+        .word-highlight {
+            background-color: rgba(241, 196, 15, 0.4); /* Transparent Yellow Background */
+            border-bottom: 2px solid #f1c40f;
+            border-radius: 2px;
+            color: var(--text-main);
+            font-weight: bold;
+            display: inline-block;
+            transition: background-color 0.1s ease;
+        }
+
+        body.light-theme .word-highlight {
+            background-color: rgba(241, 196, 15, 0.6);
+            color: #000;
+        }
+
+        .dyslexic {
+            font-family: 'OpenDyslexic', sans-serif !important;
+        }
+
+        .serif {
+            font-family: 'Georgia', serif;
+        }
+
+        .sans-serif {
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .reading-marker-info {
+            font-size: 0.8rem;
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+<div class="workspace">
+    
+    <aside class="sidebar">
+        <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Reader Settings</h2>
+
+        <div class="control-section">
+            <h3><i class="fa-solid fa-file-import"></i> Upload Document</h3>
+            <div class="dropzone">
+                <i class="fa-solid fa-cloud-arrow-up fa-2x" style="color: var(--accent);"></i>
+                <p style="font-size: 0.85rem; margin: 10px 0 0 0;">Drag & drop <strong>PDF, DOCX, TXT</strong> or click</p>
+                <input type="file" id="file-uploader" accept=".txt,.pdf">
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3><i class="fa-solid fa-highlighter"></i> Reading Spotlight</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-secondary" onclick="toggleSpotlight()" style="flex: 1;"><i class="fa-solid fa-eye"></i> Toggle On/Off</button>
+            </div>
+            <label for="mask-height-range" style="font-size: 0.8rem;">Spotlight Height:</label>
+            <input type="range" id="mask-height-range" class="range-input" min="30" max="180" value="80">
+
+            <label for="mask-dim-range" style="font-size: 0.8rem;">Overlay Darkness:</label>
+            <input type="range" id="mask-dim-range" class="range-input" min="10" max="95" value="70">
+        </div>
+
+        <div class="control-section">
+            <h3><i class="fa-solid fa-font"></i> Typography</h3>
+            <select id="font-family-select" class="select-input">
+                <option value="sans-serif">Sans-Serif (Standard)</option>
+                <option value="serif">Serif (Traditional)</option>
+                <option value="dyslexic">OpenDyslexic (Dyslexia Friendly)</option>
+            </select>
+            <div style="display: flex; gap:10px;">
+                <button class="btn btn-secondary" onclick="adjustTextSize(-2)" style="flex:1;"><i class="fa-solid fa-minus"></i> A-</button>
+                <button class="btn btn-secondary" onclick="adjustTextSize(2)" style="flex:1;"><i class="fa-solid fa-plus"></i> A+</button>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3><i class="fa-solid fa-volume-high"></i> Audio Playback</h3>
+            
+            <button class="btn" id="audio-btn" onclick="toggleSpeechMain()"><i class="fa-solid fa-play"></i> Play / Stop Entire Document</button>
+            
+            <div class="playback-grid">
+                <button class="btn btn-secondary" onclick="pauseSpeech()"><i class="fa-solid fa-pause"></i> Pause</button>
+                <button class="btn btn-secondary" onclick="resumeSpeech()"><i class="fa-solid fa-play-pause"></i> Resume</button>
+            </div>
+
+            <button class="btn btn-secondary" onclick="restartFromCursor()"><i class="fa-solid fa-arrow-rotate-left"></i> Restart from Cursor</button>
+            
+            <button class="btn btn-secondary" id="highlight-toggle-btn" onclick="toggleHighlightWords()"><i class="fa-solid fa-highlighter"></i> Highlight Words (Off)</button>
+            
+            <div class="reading-marker-info" id="marker-status-display">
+                <i class="fa-solid fa-circle-info"></i> Double-click any line on screen to set a custom voice starting cursor.
+            </div>
+            
+            <label for="voice-select" style="font-size: 0.8rem;">Voice:</label>
+            <select id="voice-select" class="select-input"></select>
+            
+            <div style="display:flex; justify-content:space-between; font-size: 0.8rem;">
+                <label for="speed-range">Speed:</label>
+                <span id="speed-label">1x</span>
+            </div>
+            <input type="range" id="speed-range" class="range-input" min="0.5" max="2" step="0.1" value="1">
+        </div>
+
+        <div class="control-section">
+            <h3><i class="fa-solid fa-gears"></i> Smart Tools</h3>
+            <button class="btn btn-secondary" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Switch Theme</button>
+            
+            <div style="border: 1px solid var(--border); padding: 10px; border-radius: 6px;">
+                <button class="btn btn-secondary" id="scroll-btn" onclick="toggleAutoScroll()" style="width: 100%; margin-bottom: 8px;"><i class="fa-solid fa-angles-down"></i> Auto Scroll (Off)</button>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px;">
+                    <label for="scroll-speed-range">Scroll Speed:</label>
+                    <span id="scroll-speed-label">Ultra Slow</span>
+                </div>
+                <input type="range" id="scroll-speed-range" class="range-input" min="1" max="10" step="1" value="1" oninput="changeScrollSpeed()">
+            </div>
+        </div>
+    </aside>
+
+    <main class="reading-area" id="reading-area">
+        <div class="spotlight-mask" id="spotlight"></div>
+        
+        <article class="readable-content sans-serif" id="readable-content" contenteditable="true">
+            <h1>Welcome to Your Assistive Workspace</h1>
+            <p><strong>💡 Interactive Mode Enabled:</strong> You can edit, copy, paste, or type directly into this page at any time.</p>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 25px 0;">
+            <p>Double click on this paragraph to choose it as your reading starting point. When you do, a visual cursor indicator will appear on its left boundary. Clicking the "Speak from Cursor" play button will begin playing audio from that paragraph instead of starting over from page one!</p>
+            <p>This layout operates entirely within your browser locally. You can drop very large files inside the uploader to test the spotlight's coverage. The black dim overlay remains consistent all the way to the bottom of long chapters and textbooks.</p>
+            <p>Adjust font size and toggle background themes to your liking. Happy reading!</p>
+        </article>
+    </main>
+
+</div>
+
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    
+    const readingArea = document.getElementById('reading-area');
+    const spotlight = document.getElementById('spotlight');
+    const textContainer = document.getElementById('readable-content');
+    const uploader = document.getElementById('file-uploader');
+    const speedRange = document.getElementById('speed-range');
+    const speedLabel = document.getElementById('speed-label');
+    const voiceSelect = document.getElementById('voice-select');
+    const markerDisplay = document.getElementById('marker-status-display');
+    const scrollSpeedRange = document.getElementById('scroll-speed-range');
+    const scrollSpeedLabel = document.getElementById('scroll-speed-label');
+
+    let currentFontSize = 20;
+    let spotlightActive = false;
+    let scrollInterval = null;
+    let activeSpeakingTarget = null; 
+    let highlightWordsActive = false; 
+
+    // --- Dynamic Spotlight fixed tracking ---
+    document.addEventListener('mousemove', (e) => {
+        if (!spotlightActive) return;
+        const viewportY = e.clientY;
+        spotlight.style.setProperty('--mask-y', `${viewportY}px`);
+    });
+
+    // Touch Support
+    document.addEventListener('touchmove', (e) => {
+        if (!spotlightActive || e.touches.length === 0) return;
+        const viewportY = e.touches[0].clientY;
+        spotlight.style.setProperty('--mask-y', `${viewportY}px`);
+    });
+
+    function toggleSpotlight() {
+        spotlightActive = !spotlightActive;
+        spotlight.style.display = spotlightActive ? 'block' : 'none';
+        updateSpotlightValues();
+    }
+
+    const heightRange = document.getElementById('mask-height-range');
+    const dimRange = document.getElementById('mask-dim-range');
+    
+    function updateSpotlightValues() {
+        spotlight.style.setProperty('--mask-height', `${heightRange.value}px`);
+        const opacity = dimRange.value / 100;
+        
+        const isLight = document.body.classList.contains('light-theme');
+        spotlight.style.backgroundColor = isLight 
+            ? `rgba(245, 246, 250, ${opacity})` 
+            : `rgba(26, 26, 36, ${opacity})`;
+    }
+    heightRange.addEventListener('input', updateSpotlightValues);
+    dimRange.addEventListener('input', updateSpotlightValues);
+
+    // --- Double-Click Text cursor pointer registration ---
+    textContainer.addEventListener('dblclick', (e) => {
+        const paragraphNode = e.target.closest('p');
+        if (paragraphNode) {
+            const elements = textContainer.querySelectorAll('p');
+            elements.forEach(el => el.classList.remove('reading-target-active'));
+            
+            activeSpeakingTarget = paragraphNode;
+            paragraphNode.classList.add('reading-target-active');
+            
+            const snippetText = paragraphNode.textContent.substring(0, 30) + '...';
+            markerDisplay.innerHTML = `<i class="fa-solid fa-location-dot" style="color: var(--accent); animation: bounce 1s infinite alternate"></i> Cursor Set: <strong>"${snippetText}"</strong>`;
+        }
+    });
+
+    // --- Typography Controls ---
+    document.getElementById('font-family-select').addEventListener('change', (e) => {
+        textContainer.className = `readable-content ${e.target.value}`;
+    });
+
+    function adjustTextSize(amount) {
+        currentFontSize += amount;
+        if (currentFontSize < 14) currentFontSize = 14;
+        if (currentFontSize > 44) currentFontSize = 44;
+        textContainer.style.fontSize = `${currentFontSize}px`;
+    }
+
+    // --- Themes ---
+    function toggleTheme() {
+        document.body.classList.toggle('light-theme');
+        updateSpotlightValues();
+    }
+
+    // --- File Readers & Parser Imports ---
+    uploader.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        textContainer.innerHTML = `<h1>${file.name}</h1><p>Extracting text, please wait...</p>`;
+
+        if (file.type === "application/pdf") {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = `<h1>${file.name}</h1>`;
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += `<p>${pageText}</p>`;
+                }
+                textContainer.innerHTML = fullText;
+                activeSpeakingTarget = null;
+                markerDisplay.innerHTML = `<i class="fa-solid fa-circle-info"></i> Double-click any line on screen to place voice starting cursor.`;
+            } catch (err) {
+                alert("Failed to read PDF text natively. Ensure file isn't scanned or locked.");
+                console.error(err);
+            }
+        } else if (file.name.endsWith('.txt')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                textContainer.innerHTML = `<h1>${file.name}</h1>` + text.split('\n').map(p => p.trim() ? `<p>${p}</p>` : '').join('');
+                activeSpeakingTarget = null;
+                markerDisplay.innerHTML = `<i class="fa-solid fa-circle-info"></i> Double-click any line on screen to place voice starting cursor.`;
+            };
+            reader.readAsText(file);
+        } else {
+            alert("This format requires custom parsing. Currently supported: .txt and copy-pasteable .pdf structures.");
+        }
+    });
+
+    // --- Audio Reader (Text-To-Speech starting cursor & full controls) ---
+    let synth = window.speechSynthesis;
+    let voices = [];
+
+    function populateVoices() {
+        if (!synth) return;
+        voices = synth.getVoices();
+        voiceSelect.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name} (${v.lang})</option>`).join('');
+    }
+    populateVoices();
+    if (synth && synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = populateVoices;
+    }
+
+    speedRange.addEventListener('input', () => {
+        speedLabel.textContent = `${speedRange.value}x`;
+    });
+
+    function toggleHighlightWords() {
+        highlightWordsActive = !highlightWordsActive;
+        const highlightBtn = document.getElementById('highlight-toggle-btn');
+        if (highlightWordsActive) {
+            highlightBtn.innerHTML = `<i class="fa-solid fa-highlighter"></i> Highlight Words (On)`;
+            highlightBtn.classList.add('btn-active');
+        } else {
+            highlightBtn.innerHTML = `<i class="fa-solid fa-highlighter"></i> Highlight Words (Off)`;
+            highlightBtn.classList.remove('btn-active');
+            clearWordHighlights();
+        }
+    }
+
+    function clearWordHighlights() {
+        const highlightedElements = textContainer.querySelectorAll('.word-highlight');
+        highlightedElements.forEach(elem => {
+            const parent = elem.parentNode;
+            parent.replaceChild(document.createTextNode(elem.textContent), elem);
+            parent.normalize(); 
+        });
+    }
+
+    function toggleSpeechMain() {
+        if (!synth) return alert("Text-to-speech is unsupported inside this browser.");
+        
+        if (synth.speaking) {
+            synth.cancel();
+            updateAudioButton(false);
+            clearWordHighlights();
+            return;
+        }
+
+        startReadingSequence();
+    }
+
+    function startReadingSequence() {
+        let runReadingSequence = "";
+        let nodeSequenceList = [];
+
+        if (activeSpeakingTarget) {
+            let iteratorNode = activeSpeakingTarget;
+            while (iteratorNode) {
+                if (iteratorNode.tagName === 'P' || iteratorNode.tagName.match(/^H\d$/)) {
+                    nodeSequenceList.push(iteratorNode);
+                    runReadingSequence += iteratorNode.innerText + " \n ";
+                }
+                iteratorNode = iteratorNode.nextElementSibling;
+            }
+        } else {
+            const children = textContainer.children;
+            for (let child of children) {
+                if (child.tagName === 'P' || child.tagName.match(/^H\d$/)) {
+                    nodeSequenceList.push(child);
+                    runReadingSequence += child.innerText + " \n ";
+                }
+            }
+        }
+
+        if (runReadingSequence.trim()) {
+            const utterance = new SpeechSynthesisUtterance(runReadingSequence);
+            if (voices[voiceSelect.value]) {
+                utterance.voice = voices[voiceSelect.value];
+            }
+            utterance.rate = parseFloat(speedRange.value);
+
+            utterance.onboundary = (event) => {
+                if (!highlightWordsActive || event.name !== 'word') return;
+
+                const charIndex = event.charIndex;
+                let traversedChars = 0;
+                let targetNode = null;
+                let localOffset = 0;
+
+                for (let node of nodeSequenceList) {
+                    const textLength = node.innerText.length + 3; 
+                    if (charIndex >= traversedChars && charIndex < traversedChars + textLength) {
+                        targetNode = node;
+                        localOffset = charIndex - traversedChars;
+                        break;
+                    }
+                    traversedChars += textLength;
+                }
+
+                if (targetNode) {
+                    const rawText = targetNode.innerText;
+                    let endOfWord = rawText.indexOf(' ', localOffset);
+                    if (endOfWord === -1) endOfWord = rawText.length;
+                    
+                    const before = rawText.substring(0, localOffset);
+                    const currentWord = rawText.substring(localOffset, endOfWord);
+                    const after = rawText.substring(endOfWord);
+
+                    targetNode.innerHTML = `${before}<span class="word-highlight">${currentWord}</span>${after}`;
+                }
+            };
+            
+            utterance.onend = () => {
+                updateAudioButton(false);
+                clearWordHighlights();
+            };
+
+            updateAudioButton(true);
+            synth.speak(utterance);
+        }
+    }
+
+    function pauseSpeech() {
+        if (synth && synth.speaking && !synth.paused) {
+            synth.paused = true; // Flag representation to resolve thread locks on some architectures
+            synth.pause();
+        }
+    }
+
+    function resumeSpeech() {
+        if (synth && synth.paused) {
+            synth.resume();
+        }
+    }
+
+    function restartFromCursor() {
+        if (!synth) return;
+        synth.cancel(); 
+        clearWordHighlights();
+        setTimeout(() => {
+            startReadingSequence();
+        }, 100);
+    }
+
+    function updateAudioButton(isPlaying) {
+        const btn = document.getElementById('audio-btn');
+        if (isPlaying) {
+            btn.innerHTML = `<i class="fa-solid fa-square"></i> Stop Reading`;
+            btn.style.backgroundColor = "var(--accent-hover)";
+        } else {
+            btn.innerHTML = `<i class="fa-solid fa-play"></i> Play / Stop Entire Document`;
+            btn.style.backgroundColor = "var(--accent)";
+        }
+    }
+
+    // --- Hands-free Auto Scroller (Fixed & optimized loop math for ultra-slow crawling) ---
+    function toggleAutoScroll() {
+        const btn = document.getElementById('scroll-btn');
+        if (scrollInterval) {
+            clearInterval(scrollInterval);
+            scrollInterval = null;
+            btn.innerHTML = `<i class="fa-solid fa-angles-down"></i> Auto Scroll (Off)`;
+            btn.style.backgroundColor = "transparent";
+        } else {
+            runScrollerLoop();
+            btn.innerHTML = `<i class="fa-solid fa-pause"></i> Auto Scroll (Active)`;
+            btn.style.backgroundColor = "rgba(0, 210, 211, 0.2)";
+        }
+    }
+
+    function runScrollerLoop() {
+        if (scrollInterval) clearInterval(scrollInterval);
+        
+        const sliderVal = parseInt(scrollSpeedRange.value);
+        
+        // Timer intervals are spaced dynamically based on the slider value.
+        // Lower values translate to longer pauses between 1px steps, allowing extremely slow, steady movement.
+        const stepDelay = Math.max(10, 110 - (sliderVal * 10)); // Ranges between 10ms (fast) and 100ms (ultra-slow)
+        
+        scrollInterval = setInterval(() => {
+            readingArea.scrollTop += 1; // Perform smooth single-pixel crawl steps
+        }, stepDelay);
+    }
+
+    function changeScrollSpeed() {
+        const val = parseInt(scrollSpeedRange.value);
+
+        if (val <= 2) {
+            scrollSpeedLabel.textContent = "Ultra Slow";
+        } else if (val <= 4) {
+            scrollSpeedLabel.textContent = "Slow";
+        } else if (val <= 7) {
+            scrollSpeedLabel.textContent = "Medium";
+        } else {
+            scrollSpeedLabel.textContent = "Fast";
+        }
+
+        if (scrollInterval) {
+            runScrollerLoop();
+        }
+    }
+</script>
+
+</body>
+</html>
